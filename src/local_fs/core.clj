@@ -58,12 +58,12 @@
 
 (defn expand-home
   "If `path` begins with a tilde (`~`), expand the tilde to the value
-  of the `user.home` system property. If the `path` begins with a
-  tilde immediately followed by some characters, they are assumed to
-  be a username. This is expanded to the path to that user's home
-  directory. This is (naively) assumed to be a directory with the same
-  name as the user relative to the parent of the current value of
-  `user.home`."
+   of the `user.home` system property. If the `path` begins with a
+   tilde immediately followed by some characters, they are assumed to
+   be a username. This is expanded to the path to that user's home
+   directory. This is (naively) assumed to be a directory with the same
+   name as the user relative to the parent of the current value of
+   `user.home`."
   [path]
   (let [path (str path)]
     (if (.startsWith path "~")
@@ -106,9 +106,12 @@
 
 (defmacro varargs
   "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
-  the result.
-    (u/varargs String)
-    (u/varargs String [\"A\" \"B\"])"
+   the result.
+
+   ```clojure
+   (u/varargs String)
+   (u/varargs String [\"A\" \"B\"])
+   ```"
   {:style/indent 1, :arglists '([klass] [klass xs])}
   [klass & [objects]]
   (vary-meta `(into-array ~klass ~objects)
@@ -121,10 +124,11 @@
 
 (defn format-color
   "Like `format`, but colorizes the output. `color` should be a symbol or keyword like `green`, `red`, `yellow`, `blue`,
-  `cyan`, `magenta`, etc. See the entire list of avaliable
-  colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
+   `cyan`, `magenta`, etc. See the entire list of avaliable colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
-      (format-color :red \"Fatal error: %s\" error-message)"
+   ```clojure
+   (format-color :red \"Fatal error: %s\" error-message)
+   ```"
   {:style/indent 2}
   (^String [color x]
    {:pre [((some-fn symbol? keyword?) color)]}
@@ -135,10 +139,10 @@
 
 (defn ->link-options
   "Converts a hash-map of options into an array of LinkOption objects.
-  | key              | description |
-  | -----------------|-------------|
-  | `:nofollow-links`| Adds LinkOption/NOFOLLOW_LINKS to the array. Default: `false`
-  "
+   
+   | key              | description |
+   | -----------------|-------------|
+   | `:nofollow-links`| Adds LinkOption/NOFOLLOW_LINKS to the array. Default: `false`|"
   ([]
    (make-array LinkOption 0))
   ([{:keys [nofollow-links]}]
@@ -151,8 +155,7 @@
 (defn ^String base-name
   "Return the base name (final segment/file part) of a `path`.
    If optional `trim-ext` is a string and the `path` ends with that
-   string, it is trimmed.
-   If `trim-ext` is true, any extension is trimmed."
+   string, it is trimmed. If `trim-ext` is true, any extension is trimmed."
   ([path] (.getName (file path)))
   ([path trim-ext]
    (let [base (.getName (file path))]
@@ -193,8 +196,8 @@
 
 (defn walk
   "Lazily walk depth-first over the directory structure starting at
-  `path` calling `func` with three arguments `[root dirs files]`.
-  Returns a sequence of the results."
+   `path` calling `func` with three arguments `[root dirs files]`.
+   Returns a sequence of the results."
   [func path]
   (map #(apply func %) (iterate-dir path)))
 
@@ -210,8 +213,7 @@
     (cons parent (lazy-seq (parents parent)))))
 
 (defn chdir
-  "set!s the value of `*cwd*` to `path`. Only works inside of
-   [[with-mutable-cwd]]"
+  "set!s the value of `*cwd*` to `path`. Only works inside of [[with-mutable-cwd]]"
   [path]
   (set! *cwd* (file path)))
 
@@ -224,28 +226,34 @@
    (Files/exists (as-path path) (->link-options {:nofollow-links nofollow-links}))))
 
 (defn directory?
+  "Return true if `path` is a directory."
   ([path]
    (directory? path {}))
   ([path {:keys [nofollow-links]}]
    (Files/isDirectory (as-path path) (->link-options {:nofollow-links nofollow-links}))))
 
 (defn executable?
+  "Return true if `path` is a executable file."
   [path]
   (Files/isExecutable (as-path path)))
 
 (defn hidden?
+  "Return true if `path` is a hidden file."
   [path]
   (Files/isHidden (as-path path)))
 
 (defn readable?
+  "Return true if `path` is a readable file."
   [path]
   (Files/isReadable (as-path path)))
 
 (defn writable?
+  "Return true if `path` is a writable file."
   [path]
   (Files/isWritable (as-path path)))
 
 (defn regular-file?
+  "Return true if `path` is a regular file (not a soft link)."
   ([path]
    (regular-file? path {}))
   ([path {:keys [nofollow-links]}]
@@ -254,10 +262,12 @@
 (def file? regular-file?)
 
 (defn same-file?
+  "Return true if `path1` is same with `path2`."
   [path1 path2]
   (Files/isSameFile (as-path path1) (as-path path2)))
 
 (defn symlink?
+  "Return true if `path` is a softlink file."
   [path]
   (Files/isSymbolicLink (as-path path)))
 
@@ -464,20 +474,23 @@
 
 (defn chmod
   "Change file permissions. Returns path.
-  `mode` can be a permissions string in octal or symbolic format.
-  Symbolic: any combination of `r` (readable) `w` (writable) and
-  `x` (executable). It should be prefixed with `+` to set or `-` to
-  unset. And optional prefix of `u` causes the permissions to be set
-  for the owner only.
-  Octal: a string of three octal digits representing user, group, and
-  world permissions. The three bits of each digit signify read, write,
-  and execute permissions (in order of significance). Note that group
-  and world permissions must be equal.
-  Examples:
-  ```
-  (chmod \"+x\" \"/tmp/foo\") ; Sets executable for everyone
-  (chmod \"u-wx\" \"/tmp/foo\") ; Unsets owner write and executable
-  ```"
+   `mode` can be a permissions string in octal or symbolic format.
+   Symbolic: any combination of `r` (readable) `w` (writable) and
+   `x` (executable). It should be prefixed with `+` to set or `-` to
+   unset. And optional prefix of `u` causes the permissions to be set
+   for the owner only.
+
+   Octal: a string of three octal digits representing user, group, and
+   world permissions. The three bits of each digit signify read, write,
+   and execute permissions (in order of significance). Note that group
+   and world permissions must be equal.
+ 
+   Examples:
+ 
+   ```clojure
+   (chmod \"+x\" \"/tmp/foo\") ; Sets executable for everyone
+   (chmod \"u-wx\" \"/tmp/foo\") ; Unsets owner write and executable
+   ```"
   [mode path]
   (if (re-matches #"^\d{3}$" mode)
     (chmod-octal mode path)
@@ -527,7 +540,7 @@
    (set-attribute path "basic:lastModifiedTime" time {:nofollow-links nofollow-links})))
 
 (defn last-access-time
-  "Get the last access time of a file or directory"
+  "Get the last access time of a file or directory."
   ([path]
    (last-access-time path {}))
   ([path {:keys [nofollow-links]}]
@@ -656,8 +669,11 @@
 
 (defn get-path
   "Get a `Path` for a file or directory in the default (i.e., system) filesystem named by string path component(s).
-    (get-path \"/Users/cam/tservice/tservice/plugins\")
-    ;; -> #object[sun.nio.fs.UnixPath 0x4d378139 \"/Users/cam/tservice/tservice/plugins\"]"
+   
+   ```clojure
+   (get-path \"/Users/cam/tservice/tservice/plugins\")
+   ;; -> #object[sun.nio.fs.UnixPath 0x4d378139 \"/Users/cam/tservice/tservice/plugins\"]
+   ```"
   ^Path [& path-components]
   (apply get-path-in-filesystem (FileSystems/getDefault) path-components))
 
@@ -671,13 +687,13 @@
 ;; ------------------ Copy, Move, Delete, Make Directory -------------------
 (defn ->copy-options
   "Converts a hash-map of options into an array of CopyOption objects.
-  | key                | description |
-  | -------------------|-------------|
-  | `:replace-existing`| Adds StandardCopyOption/REPLACE_EXISTING to the array. Default: `false`
-  | `:atomic-move`     | Adds StandardCopyOption/ATOMIC_MOVE to the array. Default: `false`
-  | `:copy-attributes` | Adds StandardCopyOption/COPY_ATTRIBUTES to the array. Default: `false`
-  | `:nofollow-links`  | Adds LinkOption/NOFOLLOW_LINKS to the array. Default: `false`
-  "
+   
+   | key                | description |
+   | -------------------|-------------|
+   | `:replace-existing`| Adds StandardCopyOption/REPLACE_EXISTING to the array. Default: `false`
+   | `:atomic-move`     | Adds StandardCopyOption/ATOMIC_MOVE to the array. Default: `false`
+   | `:copy-attributes` | Adds StandardCopyOption/COPY_ATTRIBUTES to the array. Default: `false`
+   | `:nofollow-links`  | Adds LinkOption/NOFOLLOW_LINKS to the array. Default: `false`"
   ([]
    (make-array CopyOption 0))
   ([{:keys [replace-existing
@@ -752,9 +768,9 @@
 
 (defn create-directory
   "Warning: Setting posix-file-permissions on create will not always
-  result in the permissions you specify. This is a limitation of the
-  implementation. To guarantee those permissions you should set the
-  permissions as another step after creating the file."
+   result in the permissions you specify. This is a limitation of the
+   implementation. To guarantee those permissions you should set the
+   permissions as another step after creating the file."
   ([path]
    (create-directory path {}))
   ([path {:keys [posix-file-permissions]}]
@@ -763,9 +779,9 @@
 
 (defn create-directories!
   "Warning: Setting posix-file-permissions on create will not always
-  result in the permissions you specify. This is a limitation of the
-  implementation. To guarantee those permissions you should set the
-  permissions as another step after creating the file."
+   result in the permissions you specify. This is a limitation of the
+   implementation. To guarantee those permissions you should set the
+   permissions as another step after creating the file."
   ([path]
    (create-directories! path {}))
   ([path {:keys [posix-file-permissions]}]
@@ -831,7 +847,7 @@
 
 (defn copy-files!
   "Copy all files in `source-dir` to `dest-dir`. Overwrites existing files if last modified timestamp is not the same as
-  that of the source file — see #11699 for more context."
+   that of the source file — see #11699 for more context."
   [^Path source-dir, ^Path dest-dir]
   (doseq [^Path source (files-seq source-dir)
           :let         [target (append-to-path dest-dir (str (.getFileName source)))]]
@@ -922,9 +938,9 @@
 
 (defn create-file
   "Warning: Setting posix-file-permissions on create will not always
-  result in the permissions you specify. This is a limitation of the
-  implementation. To guarantee those permissions you should set the
-  permissions as another step after creating the file."
+   result in the permissions you specify. This is a limitation of the
+   implementation. To guarantee those permissions you should set the
+   permissions as another step after creating the file."
   ([path]
    (create-file path {}))
   ([path {:keys [posix-file-permissions content]}]
@@ -940,7 +956,7 @@
 
 (defn create-symlink
   "Not allowing posix-file-permissions for file attributes since it is not supported on MacOS
-  or Linux for this operation."
+   or Linux for this operation."
   [link-path target-path]
   (Files/createSymbolicLink (as-path link-path) (as-path target-path) (->file-attributes)))
 
@@ -1044,7 +1060,7 @@
 (defn ephemeral-file
   "Create an ephemeral file (will be deleted on JVM exit).
    Returns nil if file could not be created even after n tries
-  (default 10)."
+   (default 10)."
   ([prefix]              (ephemeral-file prefix "" 10))
   ([prefix suffix]       (ephemeral-file prefix suffix 10))
   ([prefix suffix tries] (when-let [created (temp-create prefix suffix tries create)]
@@ -1053,7 +1069,7 @@
 (defn ephemeral-dir
   "Create an ephemeral directory (will be deleted on JVM exit).
    Returns nil if dir could not be created even after n tries
-  (default 10)."
+   (default 10)."
   ([prefix]              (ephemeral-dir prefix "" 10))
   ([prefix suffix]       (ephemeral-dir prefix suffix 10))
   ([prefix suffix tries] (when-let [created (temp-create prefix suffix tries mkdirs)]
@@ -1061,9 +1077,9 @@
 
 (defn create-temp-directory
   "Warning: Setting posix-file-permissions on create will not always
-  result in the permissions you specify. This is a limitation of the
-  implementation. To guarantee those permissions you should set the
-  permissions as another step after creating the file."
+   result in the permissions you specify. This is a limitation of the
+   implementation. To guarantee those permissions you should set the
+   permissions as another step after creating the file."
   ([prefix]
    (create-temp-directory prefix {}))
   ([prefix {:keys [posix-file-permissions]}]
@@ -1072,9 +1088,9 @@
 
 (defn create-temp-file
   "Warning: Setting posix-file-permissions on create will not always
-  result in the permissions you specify. This is a limitation of the
-  implementation. To guarantee those permissions you should set the
-  permissions as another step after creating the file."
+   result in the permissions you specify. This is a limitation of the
+   implementation. To guarantee those permissions you should set the
+   permissions as another step after creating the file."
   ([prefix suffix]
    (create-temp-file prefix suffix {}))
   ([prefix suffix {:keys [posix-file-permissions content]}]
@@ -1178,7 +1194,7 @@
 
 ;; ----------------------------- Shell --------------------------------
 (defn exec
-  "Execute a shell command in the current directory"
+  "Execute a shell command in the current directory."
   [& body]
   (sh/with-sh-dir *cwd* (apply sh/sh body)))
 
@@ -1231,11 +1247,14 @@
 
 (defmacro with-open-path-to-resource
   "Execute `body` with an Path to a resource file or directory (i.e. a file in the project `resources/` directory, or
-  inside the uberjar), cleaning up when finished.
-  Throws a FileNotFoundException if the resource does not exist; be sure to check with `io/resource` or similar before
-  calling this.
-    (with-open-path-to-resouce [path \"modules\"]
-       ...)"
+   inside the uberjar), cleaning up when finished.
+   Throws a FileNotFoundException if the resource does not exist; be sure to check with `io/resource` or similar before
+   calling this.
+
+   ```clojure
+   (with-open-path-to-resouce [path \"modules\"]
+       ...)
+   ```"
   [[path-binding resource-filename-str] & body]
   `(do-with-open-path-to-resource
     ~resource-filename-str
@@ -1245,8 +1264,7 @@
 (defn exists??
   "Does file at `path` actually exist?
   
-   TODO: exists?? is different with exists? why?
-  "
+   TODO: exists?? is different with exists? why?"
   [^Path path]
   (Files/exists path (varargs LinkOption)))
 
