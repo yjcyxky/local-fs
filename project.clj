@@ -1,6 +1,6 @@
-(defproject com.github.yjcyxky/local-fs "0.1.1"
+(defproject com.github.yjcyxky/local-fs "0.1.3"
   :description "File system utilities in clojure."
-  :url "https://github.com//"
+  :url "https://github.com/yjcyxky/local-fs.git"
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.10.1"]
@@ -15,7 +15,7 @@
             [lein-changelog "0.3.2"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.0"]]}}
   :deploy-repositories [["releases" :clojars]]
-  :aliases {"update-readme-version" ["shell" "sed" "-i" "s/\\\\[org\\.clojars\\.yjcyxky\\\\/local-fs \"[0-9.]*\"\\\\]/[org\\.clojars\\.yjcyxky\\\\/local-fs \"${:version}\"]/" "README.md"]}
+  :aliases {"update-readme-version" ["shell" "sed" "-i" "" "s/\\\\[com\\.github\\.yjcyxky\\\\/local-fs \"[0-9.]*\"\\\\]/[com\\.github\\.yjcyxky\\\\/local-fs \"${:version}\"]/" "README.md"]}
   :release-tasks [["shell" "git" "diff" "--exit-code"]
                   ["change" "version" "leiningen.release/bump-version"]
                   ["change" "version" "leiningen.release/bump-version" "release"]

@@ -1242,19 +1242,27 @@
     (fn [~(vary-meta path-binding assoc :tag java.nio.file.Path)]
       ~@body)))
 
+(defn exists??
+  "Does file at `path` actually exist?
+  
+   TODO: exists?? is different with exists? why?
+  "
+  [^Path path]
+  (Files/exists path (varargs LinkOption)))
+
 (defn file-exists-in-archive?
   "True is a file exists in an archive."
   [^Path archive-path & path-components]
   (with-open [fs (FileSystems/newFileSystem archive-path (ClassLoader/getSystemClassLoader))]
     (let [file-path (apply get-path-in-filesystem fs path-components)]
-      (exists? file-path))))
+      (exists?? file-path))))
 
 (defn slurp-file-from-archive
   "Read the entire contents of a file from a archive (such as a JAR)."
   [^Path archive-path & path-components]
   (with-open [fs (FileSystems/newFileSystem archive-path (ClassLoader/getSystemClassLoader))]
     (let [file-path (apply get-path-in-filesystem fs path-components)]
-      (when (exists? file-path)
+      (when (exists?? file-path)
         (with-open [is (Files/newInputStream file-path (varargs OpenOption))]
           (slurp is))))))
 
