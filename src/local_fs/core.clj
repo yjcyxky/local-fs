@@ -70,8 +70,8 @@
       (let [sep (.indexOf path File/separator)]
         (if (neg? sep)
           (home (subs path 1))
-          (io/file (home (subs path 1 sep)) (subs path (inc sep)))))
-      (io/file path))))
+          (.getPath (home (subs path 1 sep)) (subs path (inc sep)))))
+      path)))
 
 ;; Library functions will call this function on paths/files so that
 ;; we get the cwd effect on them.

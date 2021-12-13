@@ -1,4 +1,4 @@
-(defproject com.github.yjcyxky/local-fs "0.1.0"
+(defproject com.github.yjcyxky/local-fs "0.1.1"
   :description "File system utilities in clojure."
   :url "https://github.com//"
   :license {:name "Eclipse Public License"
