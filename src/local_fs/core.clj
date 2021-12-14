@@ -1291,14 +1291,14 @@
    dir, and copies the from dir to the to dir."
   [^String jar-dir from to]
   (let [jar (JarFile. jar-dir)]
-    (doseq [^JarEntry file (enumeration-seq (.entries jar))]
-      ;; Maybe `(.getName file)` is `from`.tar.gz
-      (when (.startsWith (.getName file) (str from "/"))
-        (let [f (file to (.getName file))]
-          (if (.isDirectory file)
+    (doseq [^JarEntry file-entry (enumeration-seq (.entries jar))]
+      ;; Maybe `(.getName file-entry)` is `from`.tar.gz
+      (when (.startsWith (.getName file-entry) (str from "/"))
+        (let [f (file to (.getName file-entry))]
+          (if (.isDirectory file-entry)
             (mkdir f)
             (do (mkdirs (parent f))
-                (with-open [is (.getInputStream jar file)
+                (with-open [is (.getInputStream jar file-entry)
                             os (io/output-stream f)]
                   (io/copy is os)))))))))
 

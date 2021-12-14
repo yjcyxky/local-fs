@@ -9,7 +9,7 @@ NOTICE: The local-fs library is based on https://github.com/Raynes/fs and https:
 A Clojure library designed to ... well, that part is up to you.
 
 ```clj
-[com.github.yjcyxky/local-fs "0.1.4"]
+[com.github.yjcyxky/local-fs "0.1.5"]
 ```
 
 ## Usage
