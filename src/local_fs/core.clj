@@ -1285,11 +1285,23 @@
       ~@body)))
 
 (defn exists??
-  "Does file at `path` actually exist?
+  "Does file at `path` actually exist in jar file?
   
    TODO: exists?? is different with exists? why?"
   [^Path path]
   (Files/exists path (varargs LinkOption)))
+
+(defn regular-file??
+  "Does file in jar file is a regular file?"
+  {:added "0.1.5"}
+  [^Path path]
+  (Files/isRegularFile path (varargs LinkOption)))
+
+(defn directory??
+  "Does file in jar file is a directory?"
+  {:added "0.1.5"}
+  [^Path path]
+  (Files/isDirectory path (varargs LinkOption)))
 
 (defn file-exists-in-archive?
   "True is a file exists in an archive."
@@ -1325,23 +1337,32 @@
                             os (io/output-stream f)]
                   (io/copy is os)))))))))
 
+(defn extract-file-from-dir
+  [^Path file-path ^String dest-path]
+  (with-open [is (Files/newInputStream file-path (varargs OpenOption))]
+    (io/copy is (io/file dest-path))))
+
 (defn extract-env-from-archive
   "Extract the entire contents of a file from a archive (such as a JAR)."
   [^Path archive-path ^String path-component ^String dest-dir]
   (with-open [fs (FileSystems/newFileSystem archive-path (ClassLoader/getSystemClassLoader))]
     (let [file-path (get-path-in-filesystem fs path-component)
           dest-path (join-paths dest-dir path-component)
-          env-name (first (string/split path-component #"\."))
-          env-path (join-paths dest-dir env-name)
           is-archive? (re-matches #".*\.(gz|bz2|xz|zip)$" path-component)]
-      (log/info (format "Extract env archive %s to %s" file-path env-path))
-      (when (exists? file-path)
-        ;; TODO: Need to check? (fs/exists? env-path)
+      (log/info (format "Extract env archive %s to %s" file-path dest-path))
+      (when (exists?? file-path)
+        ;; TODO: Need to check? (exists?? dest-path)
         (log/info (format-color 'yellow
-                                (format (long-str "If it have any problems when the plugin %s is loading"
-                                                  "you can remove the directory `%s` and retry.") env-name env-path)))
-        (if is-archive?
-          (with-open [is (Files/newInputStream file-path (varargs OpenOption))]
-            (io/copy is (io/file dest-path))
-            (c/decompress-archive dest-path dest-dir))
-          (extract-dir-from-jar (.toString archive-path) path-component dest-dir))))))
+                                (format (long-str "If it have any problems when the plugin is loading,"
+                                                  "you can remove the file/directory `%s` and retry.") dest-path)))
+        (cond
+          (regular-file?? file-path)
+          (do
+            (extract-file-from-dir file-path dest-path)
+            (when is-archive?
+              (c/decompress-archive dest-path dest-dir)))
+
+          (directory?? file-path)
+          (extract-dir-from-jar (.toString archive-path) path-component dest-dir)
+
+          :else (log/warn "Not a valid file/directory: " path-component))))))
