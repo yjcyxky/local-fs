@@ -152,6 +152,29 @@
       [LinkOption/NOFOLLOW_LINKS]
       []))))
 
+(defn ^String basename
+  "Returns the basename of 'path'.
+   This works by calling getName() on a java.io.File instance. It's prefered
+   over last-dir-in-path for that reason.
+   Parameters:
+     path - String containing the path.
+   Returns:
+     String containing the basename of path."
+  {:added "0.1.5"}
+  [^String path]
+  (.getName (file path)))
+
+(defn ^String dirname
+  "Returns the dirname of 'path'.
+   This works by calling getParent() on a java.io.File instance.
+   Parameters:
+     path - String containing the path.
+   Returns:
+     String containing the dirname of path."
+  {:added "0.1.5"}
+  [^String path]
+  (when path (.getParent (file path))))
+
 (defn ^String base-name
   "Return the base name (final segment/file part) of a `path`.
    If optional `trim-ext` is a string and the `path` ends with that
