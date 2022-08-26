@@ -6,14 +6,15 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [clj-file-zip "0.1.0"]
                  [org.clojure/tools.logging "1.1.0"]
-                 [middlesphere/clj-compress "0.1.0"]
+                 [middlesphere/clj-compress "0.1.0" :exclusions [org.apache.commons/commons-compress]]
                  [org.apache.commons/commons-compress "1.8"]
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]]]
   :plugins [[lein-cloverage "1.0.13"]
             [lein-shell "0.5.0"]
             [lein-ancient "0.6.15"]
             [lein-changelog "0.3.2"]]
-  :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.0"]]}}
+  :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.0"]]}
+             :test {:jvm-opts ["-Duser.home=/home/test"]}}
   :deploy-repositories [["releases" :clojars]]
   :aliases {"update-readme-version" ["shell" "sed" "-i" "" "s/\\\\[com\\.github\\.yjcyxky\\\\/local-fs \"[0-9.]*\"\\\\]/[com\\.github\\.yjcyxky\\\\/local-fs \"${:version}\"]/" "README.md"]}
   :release-tasks [["shell" "git" "diff" "--exit-code"]

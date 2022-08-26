@@ -9,7 +9,8 @@
             [clj-compress.core :as c]
             [clojure.tools.logging :as log]
             [clj-file-zip.core :as clj-zip])
-  (:import java.net.URL
+  (:import clojure.lang.Keyword
+           java.net.URL
            java.util.Collections
            java.io.FileNotFoundException
            (java.util.jar JarFile JarEntry)
@@ -42,19 +43,58 @@
        :dynamic true}
   *cwd* (.getCanonicalFile (io/file ".")))
 
-(def default-file-system (FileSystems/getDefault))
+(def default-file-system
+  ^{:doc "Different file system have different behaviors."}
+  (FileSystems/getDefault))
 
-(def file-separator (.getSeparator default-file-system))
+(def file-separator
+  ^{:doc "The file separator is `/` on Linux and macOSX, `\\` on Windows."}
+  (.getSeparator default-file-system))
 
-(let [homedir (io/file (System/getProperty "user.home"))
-      usersdir (.getParent homedir)]
+(let [^File homedir (io/file (System/getProperty "user.home"))
+      ^String usersdir (.getParent homedir)]
   (defn home
     "With no arguments, returns the current value of the `user.home` system
      property. If a `user` is passed, returns that user's home directory. It
      is naively assumed to be a directory with the same name as the `user`
      located relative to the parent of the current value of `user.home`."
-    ([] homedir)
-    ([user] (if (empty? user) homedir (io/file usersdir user)))))
+    (^File [] homedir)
+    (^File [^String user] (if (empty? user) homedir (io/file usersdir user)))))
+
+(defn coerce-path-to-string
+  "Convert a path to a string, the path may be a Path object or a string object.
+
+   ```clojure
+   (coerce-path-to-string (as-path \"/Users/codespace/\" \"test.txt\"))
+   (coerce-path-to-string \"/Users/codespace/test.txt\")
+   ```
+  "
+  ^String [path]
+  (if (instance? Path path)
+    (str path)
+    path))
+
+(defn as-file
+  "Convert a string to a File object.
+
+   ```clojure
+   (as-file \"/Users/codespace/test.txt\")
+   (as-file \"/Users/codespace/\" \"test.txt\")
+   ```
+  "
+  ^File [^String path & paths]
+  (apply io/file (coerce-path-to-string path) (map coerce-path-to-string paths)))
+
+(defn as-path
+  "Join path and convert it to a FileSystem Path object.
+
+   ```clojure
+   ;; Output: #object[sun.nio.fs.UnixPath 0x3379968a \"/Users/codespace/test.txt\"]
+   (as-path \"/Users/codespace/\" \"test.txt\")
+   ```
+  "
+  ^Path [^String path & paths]
+  (.toPath ^File (apply as-file path paths)))
 
 (defn expand-home
   "If `path` begins with a tilde (`~`), expand the tilde to the value
@@ -63,24 +103,38 @@
    be a username. This is expanded to the path to that user's home
    directory. This is (naively) assumed to be a directory with the same
    name as the user relative to the parent of the current value of
-   `user.home`."
-  [path]
-  (let [path (str path)]
-    (if (.startsWith path "~")
-      (let [sep (.indexOf path File/separator)]
-        (if (neg? sep)
-          (home (subs path 1))
-          (.getPath (home (subs path 1 sep)) (subs path (inc sep)))))
-      path)))
+   `user.home`.
+
+   ```clojure
+   ;; Output: #object[sun.nio.fs.UnixPath 0x70c782f8 \"/Users/codespace/Downloads/test.txt\"]
+   (expand-home \"~/Downloads/test.txt\")
+   ```
+  "
+  ^Path [^String path]
+  (if (.startsWith (as-path path) "~")
+    (let [sep (.indexOf path File/separator)]
+      (if (neg? sep)
+        (.toPath (home (subs path 1)))
+        (as-path (home (subs path 1 sep)) (subs path (inc sep)))))
+    path))
 
 ;; Library functions will call this function on paths/files so that
 ;; we get the cwd effect on them.
-(defn ^File file
+(defn file
   "If `path` is a period, replaces it with cwd and creates a new File object
    out of it and `paths`. Or, if the resulting File object does not constitute
    an absolute path, makes it absolutely by creating a new File object out of
-   the `paths` and cwd."
-  [^String path & paths]
+   the `paths` and cwd.
+
+   ```clojure
+   ;; Output: #object[java.io.File 0x14ea1108 \"/Users/codespace/Downloads/test.txt\"]
+   (file \"/Users/codespace/Downloads/\" \"test.txt\")
+
+   ;; Output: #object[java.io.File 0x1dd8cae3 \"/Users/codespace/Documents/Code/CommonLibrary/local-fs/./test.txt\"]
+   (file \"./test.txt\")
+   ```
+  "
+  ^File [^String path & paths]
   (when-let [path (apply
                    io/file (if (= path ".")
                              *cwd*
@@ -90,27 +144,13 @@
       path
       (io/file *cwd* path))))
 
-(defn ^:private coerce-path-to-string
-  [path]
-  (if (instance? Path path)
-    (str path)
-    path))
-
-(defn as-file
-  [path & paths]
-  (apply io/file (coerce-path-to-string path) (map coerce-path-to-string paths)))
-
-(defn as-path
-  [path & paths]
-  (.toPath (apply as-file path paths)))
-
 (defmacro varargs
   "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
    the result.
 
    ```clojure
-   (u/varargs String)
-   (u/varargs String [\"A\" \"B\"])
+   (varargs String)
+   (varargs String [\"A\" \"B\"])
    ```"
   {:style/indent 1, :arglists '([klass] [klass xs])}
   [klass & [objects]]
@@ -118,8 +158,14 @@
              assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
 
 (def ^:private ^{:arglists '([color-symb x])} colorize
-  "Colorize string `x` with the function matching `color` symbol or keyword."
-  (fn [color x]
+  "Colorize string `x` with the function matching `color` symbol or keyword.
+
+   ```clojure
+   (colorize 'red \"Fatal error: %s\" error-message)
+   (colorize :red \"Fatal error: %s\" error-message)
+   ``` 
+  "
+  (fn [^Keyword color ^String x]
     (colorize/color (keyword color) x)))
 
 (defn format-color
@@ -130,11 +176,11 @@
    (format-color :red \"Fatal error: %s\" error-message)
    ```"
   {:style/indent 2}
-  (^String [color x]
+  (^String [^Keyword color ^String x]
    {:pre [((some-fn symbol? keyword?) color)]}
    (colorize color (str x)))
 
-  (^String [color format-string & args]
+  (^String [^Keyword color ^String format-string & args]
    (colorize color (apply format (str format-string) args))))
 
 (defn ->link-options
@@ -143,44 +189,44 @@
    | key              | description |
    | -----------------|-------------|
    | `:nofollow-links`| Adds LinkOption/NOFOLLOW_LINKS to the array. Default: `false`|"
-  ([]
+  (^"[Ljava.nio.file.LinkOption;" []
    (make-array LinkOption 0))
-  ([{:keys [nofollow-links]}]
+  (^"[Ljava.nio.file.LinkOption;" [{:keys [nofollow-links]}]
    (into-array
     LinkOption
     (if nofollow-links
       [LinkOption/NOFOLLOW_LINKS]
       []))))
 
-(defn ^String basename
-  "Returns the basename of 'path'.
-   This works by calling getName() on a java.io.File instance. It's prefered
-   over last-dir-in-path for that reason.
-   Parameters:
-     path - String containing the path.
-   Returns:
-     String containing the basename of path."
-  {:added "0.1.5"}
-  [^String path]
-  (.getName (file path)))
-
-(defn ^String dirname
+(defn dirname
   "Returns the dirname of 'path'.
    This works by calling getParent() on a java.io.File instance.
    Parameters:
      path - String containing the path.
    Returns:
-     String containing the dirname of path."
+     String containing the dirname of path.
+
+   ```clojure
+   (dirname \"/Users/codespace/Downloads\")
+   ``` 
+  "
   {:added "0.1.5"}
-  [^String path]
+  ^String [^String path]
   (when path (.getParent (file path))))
 
-(defn ^String base-name
+(defn basename
   "Return the base name (final segment/file part) of a `path`.
    If optional `trim-ext` is a string and the `path` ends with that
-   string, it is trimmed. If `trim-ext` is true, any extension is trimmed."
-  ([path] (.getName (file path)))
-  ([path trim-ext]
+   string, it is trimmed. If `trim-ext` is true, any extension is trimmed.
+
+   ```clojure
+   (basename \"/Users/codespace/test.txt\")                 ;; \"test.txt\"
+   (basename \"/Users/codespace/test.txt\" true)            ;; \"test\"
+   (basename \"/Users/codespace/test.txt.gz\" \".txt.gz\")  ;; \"test\"
+   ```
+  "
+  (^String [^String path] (.getName (file path)))
+  (^String [^String path trim-ext]
    (let [base (.getName (file path))]
      (cond (string? trim-ext) (if (.endsWith base trim-ext)
                                 (subs base 0 (- (count base) (count trim-ext)))
@@ -188,6 +234,96 @@
            trim-ext (let [dot (.lastIndexOf base ".")]
                       (if (pos? dot) (subs base 0 dot) base))
            :else base))))
+
+(defn dirnames
+  "Get all the parent directories of a path."
+  [f]
+  (when-let [parent (dirname (file f))]
+    (cons parent (vector (dirname parent)))))
+
+(defn split-ext
+  "Returns a vector of `[name extension]`."
+  [path]
+  (let [base (basename path)
+        i (.lastIndexOf base ".")]
+    (if (pos? i)
+      [(subs base 0 i) (subs base i)]
+      [base nil])))
+
+(defn extension
+  "Return the extension part of a file."
+  [path]
+  (last (split-ext path)))
+
+(defn join-paths
+  "Joins one or more path segments into a single String path object."
+  ^Path [^String path & paths]
+  (.getPath (apply as-file path paths)))
+
+(defn split-path
+  [path]
+  (let [paths (map str (as-path path))]
+    (or (seq paths)
+        '(""))))
+
+(defn split
+  "Split `path` to components."
+  [path]
+  (let [pathstr (str path)
+        jregx (str "\\Q" File/separator "\\E")]
+    (cond (= pathstr file-separator) (list file-separator)
+          (and file-separator (.startsWith pathstr file-separator))
+          ;; unix absolute path
+          (cons file-separator (seq (.split (subs pathstr 1) jregx)))
+          :else (seq (.split pathstr jregx)))))
+
+(defn normalize-path
+  [^String path]
+  (-> (as-file path)
+      .toPath
+      .normalize
+      .toString))
+
+(defn absolute-path
+  [^String path]
+  (.getAbsolutePath (as-file path)))
+
+(defn canonical-path
+  [^String path]
+  (.getCanonicalPath (as-file path)))
+
+(defn children
+  ([]
+   (children "."))
+  ([^String path]
+   (vec (.list (as-file path)))))
+
+(defn- append-to-path
+  ^Path [^Path path & components]
+  (loop [^Path path path, [^String component & more] components]
+    (let [path (.resolve path component)]
+      (if-not (seq more)
+        path
+        (recur path more)))))
+
+(defn- get-path-in-filesystem
+  ^Path [^FileSystem filesystem ^String path-component & more-components]
+  (.getPath filesystem path-component (varargs String more-components)))
+
+(defn get-path
+  "Get a `Path` for a file or directory in the default (i.e., system) filesystem named by string path component(s).
+
+   ```clojure
+   (get-path \"/Users/cam/tservice/tservice/plugins\")
+   ;; -> #object[sun.nio.fs.UnixPath 0x4d378139 \"/Users/cam/tservice/tservice/plugins\"]
+   ```"
+  ^Path [& path-components]
+  (apply get-path-in-filesystem (FileSystems/getDefault) path-components))
+
+(defn chdir
+  "set!s the value of `*cwd*` to `path`. Only works inside of [[with-mutable-cwd]]"
+  [path]
+  (set! *cwd* (file path)))
 
 (defn- iterzip
   "Iterate over a zip, returns a sequence of the nodes with a nil suffix"
@@ -208,8 +344,8 @@
 
 (defn- walk-map-fn [root]
   (let [kids (f-children root)
-        dirs (set (map base-name (filter f-dir? kids)))
-        files (set (map base-name (filter (complement f-dir?) kids)))]
+        dirs (set (map basename (filter f-dir? kids)))
+        files (set (map basename (filter (complement f-dir?) kids)))]
     [root dirs files]))
 
 (defn iterate-dir
@@ -224,23 +360,7 @@
   [func path]
   (map #(apply func %) (iterate-dir path)))
 
-(defn parent
-  "Return the parent path."
-  [path]
-  (.getParentFile (file path)))
-
-(defn parents
-  "Get all the parent directories of a path."
-  [f]
-  (when-let [parent (parent (file f))]
-    (cons parent (lazy-seq (parents parent)))))
-
-(defn chdir
-  "set!s the value of `*cwd*` to `path`. Only works inside of [[with-mutable-cwd]]"
-  [path]
-  (set! *cwd* (file path)))
-
-;; ------------------------ Predictor ------------------------
+;; -------------------- Predictor --------------------
 (defn exists?
   "Return true if `path` exists."
   ([path]
@@ -297,7 +417,7 @@
 (defn child-of?
   "Takes two paths and checks to see if the first path is a parent
    of the second."
-  [p c] (some #{(file p)} (parents c)))
+  [p c] (some #{(file p)} (dirnames c)))
 
 (defn absolute-path?
   [^String path]
@@ -327,7 +447,7 @@
   [permissions]
   (->> (str permissions)
        (map (comp number-to-permissions
-                  #(Character/digit % 10)))
+                  #(Character/digit ^long % 10)))
        (apply str)))
 
 (defn ^:private permissions->octal
@@ -596,121 +716,10 @@
     (Files/size (as-path path))
     (catch NoSuchFileException _ nil)))
 
-;; --------------------------- Path Utility ---------------------------
-(defn absolute
-  "Return absolute file."
-  [path]
-  (.getAbsoluteFile (file path)))
-
-(defn normalized
-  "Return normalized (canonical) file."
-  [path]
-  (.getCanonicalFile (file path)))
-
-(def ^{:doc "The root of a unix system is `/`, `nil` on Windows"}
-  unix-root (when (= File/separator "/") File/separator))
-
-(defn split
-  "Split `path` to components."
-  [path]
-  (let [pathstr (str path)
-        jregx (str "\\Q" File/separator "\\E")]
-    (cond (= pathstr unix-root) (list unix-root)
-          (and unix-root (.startsWith pathstr unix-root))
-          ;; unix absolute path
-          (cons unix-root (seq (.split (subs pathstr 1) jregx)))
-          :else (seq (.split pathstr jregx)))))
-
-(defn first-path-segment
-  [^String path]
-  (first (map str (as-path path))))
-
-(defn join-paths
-  "Joins one or more path segments into a single String path object."
-  [path & paths]
-  (.getPath (apply as-file path paths)))
-
-(defn split-path
-  [path]
-  (let [paths (map str (as-path path))]
-    (or (seq paths)
-        '(""))))
-
-(defn last-path-segment
-  [path]
-  (.getName (as-file path)))
-
-(defn filename
-  [^String path]
-  (when-not (.endsWith path file-separator)
-    (last-path-segment path)))
-
-(defn parent-path
-  [^String path]
-  (.getParent (as-file path)))
-
-(defn parent-paths
-  [path]
-  (when-let [parent (parent-path path)]
-    (cons parent (lazy-seq (parent-paths parent)))))
-
-(defn without-extension
-  [path]
-  (if-let [filename (filename path)]
-    (let [dot-index (string/last-index-of filename ".")]
-      (if (and (pos-int? dot-index)
-               (not= dot-index (-> filename count dec)))
-        (let [chars-to-remove (- (count filename) dot-index)
-              full-path-dot-index (- (count path) chars-to-remove)]
-          (subs path 0 full-path-dot-index))
-        path))
-    path))
-
-(defn normalize-path
-  [^String path]
-  (-> (as-file path)
-      .toPath
-      .normalize
-      .toString))
-
-(defn absolute-path
-  [^String path]
-  (.getAbsolutePath (as-file path)))
-
-(defn canonical-path
-  [^String path]
-  (.getCanonicalPath (as-file path)))
-
-(defn children
-  ([]
-   (children "."))
-  ([^String path]
-   (vec (.list (as-file path)))))
-
-(defn- get-path-in-filesystem ^Path [^FileSystem filesystem ^String path-component & more-components]
-  (.getPath filesystem path-component (varargs String more-components)))
-
-(defn get-path
-  "Get a `Path` for a file or directory in the default (i.e., system) filesystem named by string path component(s).
-   
-   ```clojure
-   (get-path \"/Users/cam/tservice/tservice/plugins\")
-   ;; -> #object[sun.nio.fs.UnixPath 0x4d378139 \"/Users/cam/tservice/tservice/plugins\"]
-   ```"
-  ^Path [& path-components]
-  (apply get-path-in-filesystem (FileSystems/getDefault) path-components))
-
-(defn- append-to-path ^Path [^Path path & components]
-  (loop [^Path path path, [^String component & more] components]
-    (let [path (.resolve path component)]
-      (if-not (seq more)
-        path
-        (recur path more)))))
-
 ;; ------------------ Copy, Move, Delete, Make Directory -------------------
 (defn ->copy-options
   "Converts a hash-map of options into an array of CopyOption objects.
-   
+
    | key                | description |
    | -------------------|-------------|
    | `:replace-existing`| Adds StandardCopyOption/REPLACE_EXISTING to the array. Default: `false`
@@ -760,25 +769,6 @@
       (delete-dir path)))
   (delete root))
 
-(defn split-ext
-  "Returns a vector of `[name extension]`."
-  [path]
-  (let [base (base-name path)
-        i (.lastIndexOf base ".")]
-    (if (pos? i)
-      [(subs base 0 i) (subs base i)]
-      [base nil])))
-
-(defn extension
-  "Return the extension part of a file."
-  [path]
-  (last (split-ext path)))
-
-(defn name
-  "Return the name part of a file."
-  [path]
-  (first (split-ext path)))
-
 (defn mkdir
   "Create a directory."
   [path]
@@ -814,7 +804,7 @@
 (defn copy+
   "Copy `src` to `dest`, create directories if needed."
   [src dest]
-  (mkdirs (parent dest))
+  (mkdirs (dirname dest))
   (copy src dest))
 
 (defn copy-dir
@@ -826,7 +816,7 @@
       (throw (IllegalArgumentException. (str to " is a file")))
       (let [from (file from)
             to (if (exists? to)
-                 (file to (base-name from))
+                 (file to (basename from))
                  (file to))
             trim-size (-> from str count inc)
             dest #(file to (subs (str %) trim-size))]
@@ -849,7 +839,7 @@
     (doseq [file (list-dir from)]
       (if (directory? file)
         (copy-dir file to)
-        (copy file (io/file to (base-name file)))))))
+        (copy file (io/file to (basename file)))))))
 
 (defn files-seq
   "Get a sequence of all files in `path`, presumably a directory or an archive of some sort (like a JAR)."
@@ -937,7 +927,7 @@
                                                                 {:nofollow-links nofollow-links})
          to (if (and (directory? to)
                      (not (.endsWith to "/")))
-              (join-paths to (last-path-segment from))
+              (join-paths to (basename from))
               to)]
      (copy-all copy-options
                (map (partial copy-from-to from to)
@@ -1269,7 +1259,7 @@
       (f (get-path (.toString (Paths/get (.toURI url))))))))
 
 (defmacro with-open-path-to-resource
-  "Execute `body` with an Path to a resource file or directory (i.e. a file in the project `resources/` directory, or
+  "Execute `body` with a Path to a resource file or directory (i.e. a file in the project `resources/` directory, or
    inside the uberjar), cleaning up when finished.
    Throws a FileNotFoundException if the resource does not exist; be sure to check with `io/resource` or similar before
    calling this.
@@ -1281,7 +1271,7 @@
   [[path-binding resource-filename-str] & body]
   `(do-with-open-path-to-resource
     ~resource-filename-str
-    (fn [~(vary-meta path-binding assoc :tag java.nio.file.Path)]
+    (fn [~(vary-meta path-binding assoc :tag Path)]
       ~@body)))
 
 (defn exists??
@@ -1332,7 +1322,7 @@
         (let [f (file to (.getName file-entry))]
           (if (.isDirectory file-entry)
             (mkdir f)
-            (do (mkdirs (parent f))
+            (do (mkdirs (dirname f))
                 (with-open [is (.getInputStream jar file-entry)
                             os (io/output-stream f)]
                   (io/copy is os)))))))))
