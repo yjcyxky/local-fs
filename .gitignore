@@ -13,3 +13,4 @@ pom.xml.asc
 .lsp
 .calva
 .DS_Store
+.vscode
