@@ -10,13 +10,31 @@
 		"calva.useTestExplorer": true,
 		"testExplorer.addToEditorContextMenu": true,
 		"testExplorer.mergeSuites": true,
-		"testExplorer.showOnRun": true
+		"testExplorer.showOnRun": true,
+		"problems.showCurrentInStatus": false
 	},
 	"extensions": {
 		"recommendations": [
 			"borkdude.clj-kondo",
 			"betterthantomorrow.calva",
 			"hbenl.vscode-test-explorer"
+		]
+	},
+	"tasks": {
+		// See https://go.microsoft.com/fwlink/?LinkId=733558
+		// for the documentation about the tasks.json format
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "Run Unittest and Generage a Coverage Report",
+				"type": "shell",
+				"command": "lein with-profile test cloverage --coveralls",
+				"problemMatcher": [],
+				"group": {
+					"kind": "build",
+					"isDefault": true
+				}
+			}
 		]
 	}
 }
