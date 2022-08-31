@@ -18,7 +18,7 @@
   :test-paths ["test"]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.0"]]}
              :test {:jvm-opts ["-Duser.home=/home/test"]}}
-  :deploy-repositories [["releases" :clojars]]
+  :deploy-repositories {"releases" {:url "https://repo.clojars.org" :creds :gpg}}
   :aliases {"update-readme-version" ["shell" "sed" "-i" "" "s/\\\\[com\\.github\\.yjcyxky\\\\/local-fs \"[0-9.]*\"\\\\]/[com\\.github\\.yjcyxky\\\\/local-fs \"${:version}\"]/" "README.md"]
             "coverage" ["shell" "lein" "with-profile" "test" "cloverage" "--coveralls"]}
   :release-tasks [["shell" "git" "diff" "--exit-code"]
