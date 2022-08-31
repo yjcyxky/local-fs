@@ -18,12 +18,14 @@
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.0"]]}
              :test {:jvm-opts ["-Duser.home=/home/test"]}}
   :deploy-repositories [["releases" :clojars]]
-  :aliases {"update-readme-version" ["shell" "sed" "-i" "" "s/\\\\[com\\.github\\.yjcyxky\\\\/local-fs \"[0-9.]*\"\\\\]/[com\\.github\\.yjcyxky\\\\/local-fs \"${:version}\"]/" "README.md"]}
+  :aliases {"update-readme-version" ["shell" "sed" "-i" "" "s/\\\\[com\\.github\\.yjcyxky\\\\/local-fs \"[0-9.]*\"\\\\]/[com\\.github\\.yjcyxky\\\\/local-fs \"${:version}\"]/" "README.md"]
+            "coverage" ["shell" "lein" "with-profile" "test" "cloverage" "--coveralls"]}
   :release-tasks [["shell" "git" "diff" "--exit-code"]
                   ["change" "version" "leiningen.release/bump-version"]
                   ["change" "version" "leiningen.release/bump-version" "release"]
                   ["changelog" "release"]
                   ["update-readme-version"]
+                  ["coverage"]
                   ["vcs" "commit"]
                   ["vcs" "tag"]
                   ["deploy"]

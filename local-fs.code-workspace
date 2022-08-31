@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"calva.showDocstringInParameterHelp": true,
+		"calva.testOnSave": true,
+		"calva.useTestExplorer": true,
+		"testExplorer.addToEditorContextMenu": true,
+		"testExplorer.mergeSuites": true,
+		"testExplorer.showOnRun": true
+	},
+	"extensions": {
+		"recommendations": [
+			"borkdude.clj-kondo",
+			"betterthantomorrow.calva",
+			"hbenl.vscode-test-explorer"
+		]
+	}
+}
