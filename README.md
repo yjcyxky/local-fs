@@ -4,7 +4,7 @@ NOTICE: The local-fs library is based on https://github.com/Raynes/fs and https:
 
 [![Coverage Status](https://coveralls.io/repos/github/yjcyxky/local-fs/badge.svg?branch=master)](https://coveralls.io/github/yjcyxky/local-fs?branch=master)
 [![Clojars Project](https://img.shields.io/clojars/v/com.github.yjcyxky/local-fs.svg)](https://clojars.org/com.github.yjcyxky/local-fs)
-[![Docs](https://cljdoc.org/badge/yjcyxky/local-fs)](https://cljdoc.org/d/yjcyxky/local-fs)
+[![Docs](https://cljdoc.org/badge/com.github.yjcyxky/local-fs)](https://cljdoc.org/d/com.github.yjcyxky/local-fs)
 
 A Clojure library designed to ... well, that part is up to you.
 
