@@ -1,6 +1,7 @@
-(defproject com.github.yjcyxky/local-fs "0.1.5"
+(defproject com.github.yjcyxky/local-fs "0.2.0"
   :description "File system utilities in clojure."
   :url "https://github.com/yjcyxky/local-fs.git"
+  :scm {:name "git" :url "https://github.com/yjcyxky/local-fs.git"}
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.10.1"]
